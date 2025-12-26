@@ -22,3 +22,5 @@ Thanks to all the amazing people who have contributed to **AlumX's Backend Repos
 - Saumya Sood (@Marcella2706)
 - Omdeep Masram(@omicoded19)
 - Harshvardhan(@HARSH4885-svg)
+- Ronak Goyal (@ronakgoyal1)
+
