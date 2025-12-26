@@ -31,7 +31,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    private UserRole role;
 
     @Column(nullable = false)
     private boolean profileCompleted = false;
@@ -41,12 +41,6 @@ public class User {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    public enum Role {
-        STUDENT,
-        ALUMNI,
-        PROFESSOR
-    }
 
     @PrePersist
     protected void onCreate() {
