@@ -36,3 +36,7 @@ Thanks to all the amazing people who have contributed to **AlumX's Backend Repos
 - Kushagra Sahu (@KushagraSahu-01)
 - Ishan Raj Singh (@ishanrajsingh)
 - Sudhanshu (@sahsudhanshu)
+- Rushal verma (@Rushalverma)
+- Sanskar Chaurasiya (@Sanskarchaurasiya05)
+- N Satish (@SATII2004)
+- Satwik Santosh (@DeadlySatwik)
