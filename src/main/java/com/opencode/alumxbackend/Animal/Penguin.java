@@ -1,4 +1,9 @@
-public class Tiger {
+package com.opencode.alumxbackend.Animal;
+
+public class Penguin {
+
+    public String makeSound() {
+        return "Squawk!";
 
     public String makeSound() {
         return "Honk!";
