@@ -11,46 +11,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-public class GroupChatService {
 
-    private final GroupChatRepository repository;
-    private final UserRepository userRepository;
+public interface GroupChatService {
 
-    public GroupChat createGroup(GroupChatRequest request) {
-        GroupChat group = GroupChat.builder()
-                .groupName(request.getName())
-                .createdAt(LocalDateTime.now())
-                .build();
+    GroupChat createGroup(GroupChatRequest request);
 
-        // Map DTO participants -> Participant entity
-        List<Participant> participants = request.getParticipants().stream()
-                .map(p -> {
+    GroupChat getGroupById(Long groupId);
 
-                    var existingParticipant = userRepository.findById(p.getUserId())
-                            .orElseThrow(()-> new RuntimeException(
-                                    "User with ID " + p.getUserId() + "does not exits "
-                            ));
-                    Participant participant = new Participant();
-                    participant.setUserId(p.getUserId());
-                    participant.setUsername(p.getUsername());
-                    participant.setGroupChat(group);
-                    return participant;
-                }).collect(Collectors.toList());
+    List<GroupChat> getGroupsForUser(String userId);
 
-        group.setParticipants(participants);
 
-        // Save group along with participants (cascade)
-        return repository.save(group);
-    }
-
-    public GroupChat getGroupById(Long groupId) {
-        return repository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("Group not found"));
-    }
-
-    public List<GroupChat> getGroupsForUser(String userId) {
-        return repository.findGroupsByUserId(userId);
-    }
 }
