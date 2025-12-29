@@ -81,7 +81,7 @@ public enum UserRole {
 | **Users** | `/api/users` | POST | Public (Registration) |
 | **Users** | `/api/users/{userId}/profile` | GET | Authenticated |
 | **JobPosts** | `/api/job-posts` | POST | ALUMNI or PROFESSOR only |
-| **JobPosts** | `/api/jobs/{postId}/like` | POST | Authenticated |
+| **JobPosts** | `/api/job-posts/{postId}/like` | POST | Authenticated |
 | **GroupChat** | `/api/group-chats` | POST | Authenticated |
 | **GroupChat** | `/api/group-chats/{groupId}` | GET | Group member only |
 | **Resume** | `/api/resumes` | POST | Authenticated (own resume) |
@@ -429,6 +429,145 @@ LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret
 4. **Rate Limiting**: Limit login attempts to 5 per minute per IP
 5. **Token Rotation**: Rotate refresh tokens on each use
 6. **Audit Logging**: Log all authentication events
+
+---
+
+## 🛠️ 9. Development Workflow After Authentication
+
+### 9.1 Hybrid Mode Approach (Recommended)
+
+To avoid the hassle of obtaining auth tokens during development while maintaining security in production, implement a **hybrid mode**:
+
+```java
+// SecurityConfig.java - Profile-based security
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthFilter;
+
+    @Value("${app.security.enabled:true}")
+    private boolean securityEnabled;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        if (!securityEnabled) {
+            // DEV MODE: Allow all requests (like current behavior)
+            http.csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        } else {
+            // PROD MODE: Full JWT authentication
+            http.csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+        return http.build();
+    }
+}
+```
+
+**Configuration:**
+```properties
+# application-dev.properties (Development)
+app.security.enabled=false
+
+# application-prod.properties (Production)
+app.security.enabled=true
+```
+
+### 9.2 Step-by-Step Development Procedure
+
+#### For Local Development (No Auth Required):
+```bash
+# 1. Run with dev profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 2. Test endpoints directly without tokens
+curl http://localhost:8080/api/users/1/profile
+
+# 3. All endpoints work like before (permitAll)
+```
+
+#### For Testing Auth Flow:
+```bash
+# 1. Run with prod profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
+
+# 2. Register a user
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","email":"test@example.com","password":"password123","role":"STUDENT"}'
+
+# 3. Login to get tokens
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# Response: {"accessToken":"eyJ...", "refreshToken":"eyJ..."}
+
+# 4. Use token for protected endpoints
+curl http://localhost:8080/api/users/1/profile \
+  -H "Authorization: Bearer eyJ..."
+```
+
+### 9.3 Testing Tools Integration
+
+#### Postman/Insomnia Setup:
+1. Create environment variable `{{accessToken}}`
+2. Add login request with test script:
+```javascript
+// Post-response script
+var response = pm.response.json();
+pm.environment.set("accessToken", response.accessToken);
+```
+3. All other requests auto-use: `Authorization: Bearer {{accessToken}}`
+
+#### For Unit/Integration Tests:
+```java
+@SpringBootTest
+@ActiveProfiles("test")  // Uses application-test.properties with security disabled
+class UserControllerTest {
+    
+    @Test
+    void shouldGetUserProfile() {
+        // No auth needed in test profile
+        mockMvc.perform(get("/api/users/1/profile"))
+            .andExpect(status().isOk());
+    }
+}
+
+// OR with security enabled:
+@Test
+@WithMockUser(username = "testuser", roles = {"STUDENT"})
+void shouldGetUserProfileWithAuth() {
+    mockMvc.perform(get("/api/users/1/profile"))
+        .andExpect(status().isOk());
+}
+```
+
+### 9.4 Quick Reference: When to Use What
+
+| Scenario | Profile | Auth Required | Command |
+|----------|---------|---------------|---------|
+| Local development | `dev` | ❌ No | `mvnw spring-boot:run -Dspring-boot.run.profiles=dev` |
+| Testing auth flow | `prod` | ✅ Yes | `mvnw spring-boot:run -Dspring-boot.run.profiles=prod` |
+| Unit tests | `test` | ❌ No | Tests auto-use test profile |
+| CI/CD pipeline | `test` | ❌ No | `mvnw test` |
+| Production deploy | `prod` | ✅ Yes | Docker/K8s with prod profile |
+
+### 9.5 Backward Compatibility
+
+The hybrid approach ensures:
+- ✅ Existing development workflow unchanged (dev profile)
+- ✅ No breaking changes to current API contracts
+- ✅ Gradual migration path - enable auth when ready
+- ✅ Easy testing without token management overhead
+- ✅ Production-ready security when deployed
 
 ---
 
