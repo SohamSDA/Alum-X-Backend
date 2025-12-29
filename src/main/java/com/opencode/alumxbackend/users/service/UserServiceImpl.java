@@ -88,7 +88,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll()
                 .stream()
@@ -99,25 +98,10 @@ public class UserServiceImpl implements UserService {
     private UserResponseDto mapToResponseDTO(User user) {
         return UserResponseDto.builder()
                 .id(user.getId())
-                .username(user.getUsername())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .profileCompleted(user.isProfileCompleted())
                 .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .skills(copy(user.getSkills()))
-                .education(copy(user.getEducation()))
-                .techStack(copy(user.getTechStack()))
-                .languages(copy(user.getLanguages()))
-                .frameworks(copy(user.getFrameworks()))
-                .communicationSkills(copy(user.getCommunicationSkills()))
-                .certifications(copy(user.getCertifications()))
-                .projects(copy(user.getProjects()))
-                .softSkills(copy(user.getSoftSkills()))
-                .hobbies(copy(user.getHobbies()))
-                .experience(copy(user.getExperience()))
-                .internships(copy(user.getInternships()))
                 .build();
     }
     private UserProfileDTO mapToProfileDTO(User user) {
