@@ -1,0 +1,221 @@
+Proposal: Authentication for Existing Backend Structure
+
+--------------------------------------------------------------------------------
+1. Overview & Current State Analysis
+--------------------------------------------------------------------------------
+
+After reviewing the existing backend structure, the project currently does not implement authentication or authorization. Although Spring Security is present in the dependencies, all endpoints are effectively public due to permissive security configuration (e.g. permitAll()).
+
+Current Observations
+	- No login or signup mechanism
+	- No identity attached to incoming requests
+	- No protection for APIs handling sensitive data (posts, chats, groups, resumes)
+	- User roles (e.g. STUDENT / ALUMNI) exist but are not enforced
+	- Controllers and services assume a trusted caller
+
+This makes the system insecure and unsuitable for real-world usage, especially for features like job postings, group chats, and profile data.
+
+
+--------------------------------------------------------------------------------
+2. Where Authentication Is Needed
+--------------------------------------------------------------------------------
+
+Authentication is required at three levels:
+
+2.1 User Identity
+	- User signup
+	- User login
+	- Persistent identity across requests
+
+2.2 API Protection
+	- Prevent unauthenticated access to private APIs
+	- Ensure every protected request has a verified user context
+
+2.3 Access Control (Authorization)
+	- Restrict actions based on roles (e.g. ALUMNI vs STUDENT)
+	- Restrict resource access based on ownership or membership
+
+
+--------------------------------------------------------------------------------
+3. Affected Components
+--------------------------------------------------------------------------------
+
+3.1 Models (Entities)
+
+User
+	- Already contains credentials and role
+	- Needs minor extensions for authentication lifecycle
+	- Proposed additions:
+			* emailVerified : boolean
+			* lastLogin : LocalDateTime
+			* (Optional) account lock or status flags
+
+Other Domain Models (No structural change, but access rules apply)
+	- Group
+	- GroupMessage / ChatMessage
+	- JobPost
+	- Resume / Profile
+
+3.2 Controllers (Require Protection)
+
+Public (No Authentication)
+	- POST /api/auth/signup
+	- POST /api/auth/login
+	- Health or public info endpoints
+
+Authenticated (Any logged-in user)
+	- Group creation / chat
+	- Resume creation or update
+	- Viewing own profile
+
+Role-Based / Ownership-Based
+	- Job post creation → ALUMNI only
+	- Group messages → group members only
+	- Resume edit → owner only
+
+Controllers affected
+	- UserController
+	- GroupController
+	- GroupMessageController
+	- JobPostController
+	- ResumeController
+
+3.3 Services & DTOs
+
+New Services
+	- AuthService (signup, login, token refresh)
+	- TokenProvider (JWT generation and validation)
+
+New DTOs
+	- AuthRequest (login/signup)
+	- AuthResponse (tokens + user info)
+	- RefreshTokenRequest
+
+Modified Services
+	- Existing domain services to use authenticated user context instead of request parameters
+
+
+--------------------------------------------------------------------------------
+4. Authentication Strategy Evaluation
+--------------------------------------------------------------------------------
+
+4.1 Session-Based Authentication (Rejected)
+	- Requires server-side session storage
+	- Poor scalability for distributed systems
+	- Not suitable for mobile or API-first architecture
+
+4.2 OAuth Only (Rejected as Primary)
+	- External dependency (Google/LinkedIn availability)
+	- Does not eliminate need for API tokens
+	- Not all users may have OAuth accounts
+
+4.3 JWT-Based Authentication (Chosen)
+
+JWT (JSON Web Token) is the most suitable option given the existing architecture.
+
+Why JWT fits this project
+	- Stateless and scalable
+	- Standard for REST APIs
+	- Works well with Spring Security
+	- Supports role-based access control
+	- Compatible with both web and mobile clients
+	- Can be extended with OAuth later
+
+Final Choice
+	JWT-based authentication as the primary mechanism, with OAuth as an optional future enhancement.
+
+
+--------------------------------------------------------------------------------
+5. Proposed Architecture
+--------------------------------------------------------------------------------
+
+Core Components
+
+AuthController
+	- /api/auth/signup
+	- /api/auth/login
+	- /api/auth/refresh-token
+
+JWT Token Provider
+	- Generate access tokens (short-lived)
+	- Validate tokens
+	- Extract user identity and role
+
+JWT Authentication Filter
+	- Intercepts incoming requests
+	- Extracts token from Authorization header
+	- Validates token
+	- Sets authenticated user in security context
+
+Spring Security Configuration
+	- Public vs protected endpoint rules
+	- Role-based access configuration
+	- Stateless session management
+
+
+--------------------------------------------------------------------------------
+6. Operation Workflow (After Authentication)
+--------------------------------------------------------------------------------
+
+6.1 Login Flow
+	- User submits credentials to /api/auth/login
+	- Credentials are validated
+	- Access token (JWT) is issued
+	- Client stores token securely
+
+6.2 Authenticated Request Flow
+
+Client sends request with header:
+	Authorization: Bearer <access_token>
+
+Then
+	- JWT filter validates token
+	- User identity and role are attached to request
+	- Controller/service enforces access rules
+	- Response is returned
+
+6.3 Role / Ownership Enforcement
+	- ALUMNI role required for job posting
+	- Group membership verified before sending messages
+	- Resource ownership verified for profile or resume edits
+
+
+--------------------------------------------------------------------------------
+7. Endpoint Security Matrix (Example)
+--------------------------------------------------------------------------------
+
+Endpoint                              Access
+POST /api/auth/signup                  Public
+POST /api/auth/login                   Public
+GET  /api/users/{id}/profile           Authenticated (owner or public view)
+POST /api/job-posts                    Authenticated (ALUMNI only)
+POST /api/groups/{id}/messages         Authenticated (group members only)
+POST /api/resume                       Authenticated (owner only)
+
+
+--------------------------------------------------------------------------------
+8. Security Best Practices
+--------------------------------------------------------------------------------
+
+	- Password hashing using BCrypt (already present)
+	- Short-lived access tokens
+	- Stateless authentication
+	- Role-based authorization via Spring Security
+	- Secure storage of secrets via environment variables
+	- HTTPS enforced in production
+
+
+--------------------------------------------------------------------------------
+9. Future Enhancements (Optional)
+--------------------------------------------------------------------------------
+
+	- OAuth login via Google and LinkedIn
+	- Email verification during signup
+	- Password reset using token-based flow
+	- Rate limiting on authentication endpoints
+	- Account lock after repeated failed login attempts
+
+
+
+
+
