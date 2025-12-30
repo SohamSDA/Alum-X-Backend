@@ -239,7 +239,7 @@ class GroupMessageControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/groups/{groupId}/messages - should fail for non-existent group")
+    @DisplayName("GET /api/groups/{groupId}/messages?userId=<userId> - should fail for non-existent group")
     void getMessages_FromNonExistentGroup_ReturnsNotFound() {
         // Note: Service throws GroupNotFoundException which is RuntimeException
         // but we are catching it and returning 404
