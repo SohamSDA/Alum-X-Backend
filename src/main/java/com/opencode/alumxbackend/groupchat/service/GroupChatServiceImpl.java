@@ -4,7 +4,11 @@ import com.opencode.alumxbackend.groupchat.dto.GroupChatRequest;
 import com.opencode.alumxbackend.groupchat.model.GroupChat;
 import com.opencode.alumxbackend.groupchat.model.Participant;
 import com.opencode.alumxbackend.groupchat.repository.GroupChatRepository;
+import com.opencode.alumxbackend.users.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
+
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,28 +18,35 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupChatServiceImpl implements  GroupChatService {
     private final GroupChatRepository repository;
-    // private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Override
     public GroupChat createGroup(GroupChatRequest request) {
         GroupChat group = GroupChat.builder()
                 .groupName(request.getName())
+                .ownerId(request.getOwnerId())
                 .createdAt(LocalDateTime.now())
                 .build();
+
+        Set<Long> userIds = request.getParticipants().stream()
+                .map(p -> p.getUserId())
+                .collect(Collectors.toSet());
+
+        long count = userRepository.countByIdIn(userIds);
+        if (count != userIds.size()) {
+            throw new RuntimeException("One or more users do not exist");
+        }
 
         // Map DTO participants -> Participant entity
         List<Participant> participants = request.getParticipants().stream()
                 .map(p -> {
 
-                    // var existingParticipant = userRepository.findById(p.getUserId())
-                    //         .orElseThrow(()-> new RuntimeException(
-                    //                 "User with ID " + p.getUserId() + "does not exits "
-                    //         ));
-                    Participant participant = new Participant();
-                    participant.setUserId(p.getUserId());
-                    participant.setUsername(p.getUsername());
-                    participant.setGroupChat(group);
-                    return participant;
+                    return Participant.builder()
+                            .userId(p.getUserId())
+                            .username(p.getUsername())
+                            .groupChat(group)
+                            .build();
+
                 }).collect(Collectors.toList());
 
         group.setParticipants(participants);
