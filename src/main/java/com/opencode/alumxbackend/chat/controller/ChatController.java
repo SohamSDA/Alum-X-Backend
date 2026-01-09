@@ -5,12 +5,14 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import lombok.RequiredArgsConstructor;
 
+import com.opencode.alumxbackend.auth.security.UserPrincipal;
 import com.opencode.alumxbackend.chat.dto.ChatSendRequest;
 import com.opencode.alumxbackend.chat.dto.ChatSendResponse;
 import com.opencode.alumxbackend.chat.dto.ChatSummaryResponse;
@@ -26,7 +28,6 @@ import jakarta.validation.Valid;
 @RequiredArgsConstructor
 public class ChatController {
 
-    private static final String DUMMY_TOKEN = "alumx-dev-token";
     private static final Logger logger = Logger.getLogger(ChatController.class.getName());
     private final ChatService chatService;
 
@@ -44,33 +45,27 @@ public class ChatController {
 
     @PostMapping("/send")
     public ResponseEntity<ChatSendResponse> sendMessage(
-            @RequestHeader(value = "X-DUMMY-TOKEN", required = false) String token,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ChatSendRequest request) {
 
-        if (token == null || !token.equals(DUMMY_TOKEN)) {
-            logger.warning("Unauthorized access attempt to Dev API. Missing or invalid token.");
-            throw new UnauthorizedAccessException("Invalid or missing X-DUMMY-TOKEN header");
+
+        logger.info("[New Message] User " + userPrincipal.getId() + " (" + userPrincipal.getEmail() + ") " +
+                "- " + request.getSenderId() + " sent a message to " + request.getRecieverId() +
+                ": " + request.getContent());
+
+
+        if (!request.getSenderId().equals(userPrincipal.getId())) {
+            logger.warning("User " + userPrincipal.getId() + " attempted to send message as user " + request.getSenderId());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(null);
         }
 
-        logger.info("[New Message] " + request.getSenderId() + " sent a message to " + request.getRecieverId() + ": " + request.getContent());
-
-        // Message message = chatService.createMessage(request.getSenderId(), request.getRecieverId(), request.getContent());
-
-        // ChatSendResponse response = ChatSendResponse.builder()
-        //         .messageId(message.getMessageID())
-        //         .chatId(message.getChat().getChatID())
-        //         .senderUsername(message.getSenderUsername())
-        //         .receiverUsername(message.getSenderUsername().equals(message.getChat().getUser1Username())
-        //         ? message.getChat().getUser2Username()
-        //         : message.getChat().getUser1Username())
-        //         .content(message.getContent())
-        //         .createdAt(message.getCreatedAt())
-        //         .build();
-
-        ChatSendResponse response = chatService.createMessage(request.getSenderId(), request.getRecieverId(), request.getContent());
+        ChatSendResponse response = chatService.createMessage(
+                request.getSenderId(),
+                request.getRecieverId(),
+                request.getContent()
+        );
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
-
     }
-
 }
