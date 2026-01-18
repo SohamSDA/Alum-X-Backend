@@ -2,6 +2,7 @@ package com.opencode.alumxbackend.groupchatmessages.websocket;
 
 import com.opencode.alumxbackend.groupchat.model.GroupChat;
 import com.opencode.alumxbackend.groupchat.model.Participant;
+import com.opencode.alumxbackend.groupchat.model.ParticipantRole;
 import com.opencode.alumxbackend.groupchat.repository.GroupChatRepository;
 import com.opencode.alumxbackend.groupchatmessages.dto.GroupMessageResponse;
 import com.opencode.alumxbackend.groupchatmessages.dto.SendGroupMessageRequest;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -30,8 +31,6 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-// TODO: import org.springframework.messaging.converter.Jackson2JsonMessageConverter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,8 +72,7 @@ class GroupChatWebSocketIntegrationTest {
         SockJsClient sockJsClient = new SockJsClient(transports);
         
         stompClient = new WebSocketStompClient(sockJsClient);
-        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-        // stompClient.setMessageConverter(new Jackson2JsonMessageConverter());
+        stompClient.setMessageConverter(new JacksonJsonMessageConverter());
 
         // Clean up
         messageRepository.deleteAll();
@@ -123,6 +121,7 @@ class GroupChatWebSocketIntegrationTest {
         // For this test, we're verifying that the WebSocket broadcast happens
 
         // Then: Verify message is received via WebSocket
+        @SuppressWarnings("unused")
         GroupMessageResponse received = receivedMessages.poll(5, TimeUnit.SECONDS);
         
         // This test verifies the WebSocket configuration is working
@@ -268,6 +267,13 @@ class GroupChatWebSocketIntegrationTest {
                     p.setUserId(user.getId());
                     p.setUsername(user.getUsername());
                     p.setGroupChat(group);
+
+                    if (user.getId().equals(ownerId)) {
+                        p.setRole(ParticipantRole.ADMIN);
+                    } else {
+                        p.setRole(ParticipantRole.MEMBER);
+                    }
+
                     return p;
                 })
                 .toList();

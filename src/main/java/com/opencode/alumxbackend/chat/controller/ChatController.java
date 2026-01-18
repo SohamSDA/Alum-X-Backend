@@ -17,7 +17,6 @@ import com.opencode.alumxbackend.chat.dto.ChatSendRequest;
 import com.opencode.alumxbackend.chat.dto.ChatSendResponse;
 import com.opencode.alumxbackend.chat.dto.ChatSummaryResponse;
 import com.opencode.alumxbackend.chat.service.ChatService;
-import com.opencode.alumxbackend.auth.security.UserPrincipal;
 import com.opencode.alumxbackend.common.exception.Errors.UnauthorizedAccessException;
 
 import jakarta.validation.Valid;
