@@ -2,6 +2,7 @@ package com.opencode.alumxbackend.groupchatmessages.websocket;
 
 import com.opencode.alumxbackend.groupchat.model.GroupChat;
 import com.opencode.alumxbackend.groupchat.model.Participant;
+import com.opencode.alumxbackend.groupchat.model.ParticipantRole;
 import com.opencode.alumxbackend.groupchat.repository.GroupChatRepository;
 import com.opencode.alumxbackend.groupchatmessages.dto.GroupMessageResponse;
 import com.opencode.alumxbackend.groupchatmessages.dto.SendGroupMessageRequest;
@@ -268,6 +269,13 @@ class GroupChatWebSocketIntegrationTest {
                     p.setUserId(user.getId());
                     p.setUsername(user.getUsername());
                     p.setGroupChat(group);
+
+                    if (user.getId().equals(ownerId)) {
+                        p.setRole(ParticipantRole.ADMIN);
+                    } else {
+                        p.setRole(ParticipantRole.MEMBER);
+                    }
+                    
                     return p;
                 })
                 .toList();
